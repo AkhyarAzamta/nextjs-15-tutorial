@@ -13,12 +13,13 @@ export default function ProductReviews({ productId }: ProductReviewsProps) {
   const [newReview, setNewReview] = useState('');
   const [rating, setRating] = useState(5);
 
+  // 🎯 CSR: Fetch dari external API
   useEffect(() => {
     async function loadReviews() {
       try {
-        const response = await fetch(`/api/products/${productId}/reviews`);
+        const response = await fetch(`http://localhost:3001/api/products/${productId}/reviews`);
         const data = await response.json();
-        setReviews(data);
+        setReviews(data.data);
       } catch (error) {
         console.error('Failed to load reviews:', error);
       } finally {
@@ -29,42 +30,45 @@ export default function ProductReviews({ productId }: ProductReviewsProps) {
     loadReviews();
   }, [productId]);
 
+  // 🎯 CSR: Add new review ke external API
   const handleSubmitReview = async (e: React.FormEvent) => {
     e.preventDefault();
     
     if (!newReview.trim()) return;
     
-    const reviewToAdd: Review = {
-      id: Date.now().toString(),
-      user: 'Current User',
+    const reviewToAdd = {
       rating,
       comment: newReview,
-      date: new Date().toISOString()
+      userName: 'Current User'
     };
     
-    setReviews(prev => [reviewToAdd, ...prev]);
-    setNewReview('');
-    setRating(5);
-    
     try {
-      await fetch(`/api/products/${productId}/reviews`, {
+      const response = await fetch(`http://localhost:3001/api/products/${productId}/reviews`, {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify(reviewToAdd),
       });
+      
+      const result = await response.json();
+      
+      if (result.success) {
+        setReviews(prev => [result.data, ...prev]);
+        setNewReview('');
+        setRating(5);
+      }
     } catch (error) {
       console.error('Failed to submit review:', error);
     }
   };
 
   if (loading) {
-    return <div className="loading">Loading reviews...</div>;
+    return <div className="loading">Loading reviews from external API...</div>;
   }
 
   return (
     <div className="card">
       <form onSubmit={handleSubmitReview} style={{ marginBottom: '2rem' }}>
-        <h4>Add Your Review</h4>
+        <h4>Add Your Review (External API)</h4>
         <div style={{ marginBottom: '1rem' }}>
           <label>
             Rating: 
@@ -102,12 +106,12 @@ export default function ProductReviews({ productId }: ProductReviewsProps) {
             borderRadius: '4px'
           }}
         >
-          Submit Review
+          Submit Review to External API
         </button>
       </form>
 
       <div>
-        <h4>Customer Reviews ({reviews.length})</h4>
+        <h4>Customer Reviews from External API ({reviews.length})</h4>
         {reviews.length === 0 ? (
           <p>No reviews yet. Be the first to review!</p>
         ) : (
@@ -118,7 +122,7 @@ export default function ProductReviews({ productId }: ProductReviewsProps) {
               marginBottom: '1rem'
             }}>
               <div style={{ display: 'flex', justifyContent: 'space-between', marginBottom: '0.5rem' }}>
-                <strong>{review.user}</strong>
+                <strong>{review.userName}</strong>
                 <span>{'⭐'.repeat(review.rating)}</span>
               </div>
               <p>{review.comment}</p>
@@ -129,7 +133,7 @@ export default function ProductReviews({ productId }: ProductReviewsProps) {
           ))
         )}
       </div>
-      <p><em>This section is rendered on the client</em></p>
+      <p><em>This section uses external Express API at localhost:3001</em></p>
     </div>
   );
 }
